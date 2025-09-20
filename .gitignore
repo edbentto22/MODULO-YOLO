@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+.env/
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+
+# Images and uploads (persistidas fora do repo)
+imagens/
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Cache
+.cache/
+.pytest_cache/
+
+# Local settings
+*.local
+
+# Node (se houver futuramente)
+node_modules/
