@@ -4,9 +4,9 @@ services:
   backend:
     build: .
     container_name: modulo-yolo-backend
-    # Uvicorn expõe 8000 dentro do container (ver Dockerfile)
+    # Uvicorn expõe 8002 dentro do container (ver Dockerfile)
     ports:
-      - "8002:8000"
+      - "8002:8002"
     environment:
       # Usado pelo backend para compor os links públicos
       # BASE_URL opcional; se omitido, será inferido automaticamente

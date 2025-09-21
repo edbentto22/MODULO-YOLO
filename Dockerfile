@@ -22,9 +22,11 @@ COPY index.html ./
 # Ensure uploads directory exists and is writable
 RUN mkdir -p /app/imagens && chown -R appuser:appuser /app/imagens
 
-ENV PORT=8000
-EXPOSE 8000
+# Alinhar a porta interna com o ambiente de produção (Coolify): 8002
+ENV PORT=8002
+EXPOSE 8002
 
 USER appuser
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Ouvindo em 0.0.0.0:8002 (Traefik/Coolify acessam pelo IP do container)
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8002"]

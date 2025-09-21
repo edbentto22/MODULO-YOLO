@@ -19,11 +19,19 @@ if not CORS_ORIGINS:
     CORS_ORIGINS = [
         "http://localhost:8000",
         "http://127.0.0.1:8000",
+        # incluir 8002 para quando o backend roda nessa porta localmente
+        "http://localhost:8002",
+        "http://127.0.0.1:8002",
     ]
 
 DATA_URL_RE = re.compile(r"^data:(?P<mime>[\w\-\.+/]+);base64,(?P<b64>.+)$")
 ALLOWED_MIMES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
-MAX_SIZE_MB = 25
+
+# Permitir configurar o tamanho máximo por variável de ambiente (padrão 25MB)
+try:
+    MAX_SIZE_MB = int(os.getenv("MAX_SIZE_MB", "25"))
+except ValueError:
+    MAX_SIZE_MB = 25
 
 FILENAME_RE = re.compile(r"^(?P<registro>\d+)-(?P<ponto>\d+)\.(?P<ext>jpg|jpeg|png|webp)$", re.IGNORECASE)
 
@@ -93,6 +101,28 @@ def next_sequential_name(dir_path: str, base_prefix: str, ext: str, start: int =
             return candidate
         except FileExistsError:
             n += 1
+
+
+@app.get("/health")
+def health() -> dict:
+    """Endpoint simples de verificação de vida para Traefik/monitoração."""
+    return {"status": "ok"}
+
+
+@app.get("/")
+def root_info(request: Request) -> dict:
+    """Informações úteis para diagnosticar roteamento em produção.
+    Observação: a porta efetiva é definida no comando de inicialização do Uvicorn
+    (ex.: --port 8002) e no mapeamento do proxy reverso. Este endpoint ajuda a
+    confirmar BASE_URL, CORS e limites.
+    """
+    return {
+        "service": "upload-service",
+        "base_url": get_base_url(request),
+        "cors_origins": CORS_ORIGINS,
+        "max_size_mb": MAX_SIZE_MB,
+        "allowed_mimes": list(ALLOWED_MIMES.keys()),
+    }
 
 
 @app.post("/upload")
