@@ -8,7 +8,18 @@ from typing import Optional
 IMAGES_ROOT = os.path.abspath("./imagens")
 os.makedirs(IMAGES_ROOT, exist_ok=True)
 
-BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8002")
+BASE_URL_ENV = os.getenv("BASE_URL")
+
+# CORS: restringe via variável de ambiente CORS_ORIGINS (lista separada por vírgula)
+# Ex.: CORS_ORIGINS="https://app.seu-dominio.com,https://www.seu-dominio.com"
+_raw_origins = os.getenv("CORS_ORIGINS", "").strip()
+CORS_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+if not CORS_ORIGINS:
+    # default seguro p/ dev local; em produção, configure CORS_ORIGINS
+    CORS_ORIGINS = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
 
 DATA_URL_RE = re.compile(r"^data:(?P<mime>[\w\-\.+/]+);base64,(?P<b64>.+)$")
 ALLOWED_MIMES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
@@ -26,12 +37,14 @@ app = FastAPI(title="Upload Service")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=False,
 )
 
 app.mount("/imagens", StaticFiles(directory=IMAGES_ROOT), name="imagens")
+
 
 def parse_data_url(data_url: str):
     m = DATA_URL_RE.match(data_url)
@@ -48,6 +61,24 @@ def parse_data_url(data_url: str):
     if len(binary) > MAX_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail=f"Arquivo > {MAX_SIZE_MB}MB")
     return mime, binary
+
+
+# Determina a BASE_URL dinamicamente quando não definida em ambiente,
+# respeitando proxies reversos (X-Forwarded-*) normalmente usados por Coolify/Traefik
+def get_base_url(request: Request) -> str:
+    if BASE_URL_ENV:
+        return BASE_URL_ENV.rstrip("/")
+    f_proto = request.headers.get("x-forwarded-proto")
+    f_host = request.headers.get("x-forwarded-host")
+    f_port = request.headers.get("x-forwarded-port")
+    if f_host:
+        scheme = f_proto or request.url.scheme
+        host = f_host
+        if f_port and ":" not in host and f_port not in ("80", "443"):
+            host = f"{host}:{f_port}"
+        return f"{scheme}://{host}"
+    # fallback direto
+    return str(request.base_url).rstrip("/")
 
 
 # Adiciona parâmetro opcional 'start' para iniciar a busca a partir de um índice específico
@@ -115,7 +146,8 @@ async def upload(payload: UploadIn, request: Request):
     else:
         rel_url = f"/imagens/{registro}/{final_name}"
 
-    link = f"{BASE_URL}{rel_url}"
+    base = get_base_url(request)
+    link = f"{base}{rel_url}"
 
     return {
         "link": link,

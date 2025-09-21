@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    container_name: modulo-yolo-backend
+    # Uvicorn expõe 8000 dentro do container (ver Dockerfile)
+    ports:
+      - "8002:8000"
+    environment:
+      # Usado pelo backend para compor os links públicos
+      # BASE_URL opcional; se omitido, será inferido automaticamente
+      # - BASE_URL=https://preprocessor.matika.app
+      - CORS_ORIGINS=https://preprocessor.matika.app
+    volumes:
+      # Persistência dos uploads
+      - uploads:/app/imagens
+    # Garantir permissão de escrita no volume (simples para dev)
+    user: "0:0"
+    restart: unless-stopped
+
+  ui:
+    image: nginx:alpine
+    container_name: modulo-yolo-ui
+    ports:
+      - "8000:80"
+    volumes:
+      # Servir a UI estática (index.html)
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    restart: unless-stopped
+
+volumes:
+  uploads:

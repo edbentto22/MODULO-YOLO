@@ -248,6 +248,15 @@
 
       function uuidv4(){return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));}
       function dataUrlBytes(dataUrl){const b64=(dataUrl.split(',')[1]||'');return Math.floor((b64.length*3)/4 - (b64.endsWith('==')?2:b64.endsWith('=')?1:0));}
+async function sha256HexFromDataUrl(dataUrl){
+  const b64=(dataUrl.split(',')[1]||'');
+  const binStr=atob(b64);
+  const len=binStr.length; const bytes=new Uint8Array(len);
+  for(let i=0;i<len;i++){ bytes[i]=binStr.charCodeAt(i); }
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  const hex=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  return hex;
+}
       function setSendStatus(state,text){els.sendStatus.className='status-badge '+(state==='testing'?'status-testing':state==='ok'?'status-ok':state==='err'?'status-err':'status-neutral');els.sendStatus.textContent=text;}
       function setProgress(pct){els.sendBar.style.width=(Math.max(0,Math.min(100,pct)))+'%';}
       function log(msg){els.sendLog.textContent=(els.sendLog.textContent?els.sendLog.textContent+'\n':'')+msg;els.sendLog.scrollTop=els.sendLog.scrollHeight;}
@@ -267,17 +276,26 @@
           const img=await dataURLToImage(dataUrl);
           const originalInfo=await getOriginalInfo(file);
           const bytes=dataUrlBytes(dataUrl);
+const hash=await sha256HexFromDataUrl(dataUrl);
+log(`Imagem ${idx}: hash=${hash.substring(0,16)}… tamanho=${bytes} bytes`);
           const procDims = (els.yoloResize && els.yoloResize.checked) ? {w:640,h:640} : {w:img.naturalWidth,h:img.naturalHeight};
           processed.push({
             id,
             nome_original:file.name,
             nome_processado:(file.name.replace(/\.[^.]+$/, '')||'image')+'-processed.jpg',
             dados_base64:dataUrl,
+hash,
             dimensoes:{original:originalInfo,processada:procDims},
             tamanho_kb:Number((bytes/1024).toFixed(1))
           });
           setProgress(5 + Math.floor(90*idx/files.length));
         }
+// Verificar duplicatas após conversão
+const cnt={}; for(const p of processed){ cnt[p.hash]=(cnt[p.hash]||0)+1; }
+const dupHashes=Object.entries(cnt).filter(([,n])=>n>1);
+if(dupHashes.length){
+  log(`Aviso: ${dupHashes.length} hash(es) duplicados detectados (imagens idênticas após conversão).`);
+}
         setSendStatus('ok','Imagens processadas');log('Processamento concluído');renderThumbs();
       }
 

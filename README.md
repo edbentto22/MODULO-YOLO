@@ -39,12 +39,36 @@ python3 -m http.server 8000
 - Campo "Registro" opcional para organizar os uploads por pasta.
 - Campo "Ponto": se preencher, o servidor garantirá nome único (auto-incrementa em caso de conflito).
 
-## Variáveis de Ambiente
-- BASE_URL: URL base para compor links públicos (padrão: http://127.0.0.1:8002)
-  - Ex.: `export BASE_URL="https://api.seu-dominio.com"`
+# Upload Service
 
-## Estrutura de Pastas
-- `imagens/` (ignorada no Git):
+## Variáveis de Ambiente
+- BASE_URL: (opcional) URL base para compor links públicos. Se não definida, o serviço infere automaticamente via cabeçalhos X-Forwarded-* ou request.base_url.
+  - Ex.: `export BASE_URL="https://preprocessor.matika.app"`
+- CORS_ORIGINS: (recomendado em produção) lista separada por vírgula dos domínios permitidos para chamadas do navegador.
+  - Ex.: `export CORS_ORIGINS="https://preprocessor.matika.app,https://www.seudominio.com"`
+
+## CORS
+- Em desenvolvimento local, o serviço libera por padrão `http://localhost:8000` e `http://127.0.0.1:8000`.
+- Em produção, defina CORS_ORIGINS para restringir o acesso aos domínios da UI.
+
+## Links Públicos
+- Em produção atrás de proxy (Coolify/Traefik), deixar BASE_URL em branco é suportado: o backend detectará automaticamente o esquema/host usando `X-Forwarded-Proto`, `X-Forwarded-Host` e `X-Forwarded-Port`, caindo para `request.base_url` quando ausentes.
+
+## Docker Compose
+Exemplo:
+
+```yaml
+services:
+  app:
+    build: .
+    environment:
+      - CORS_ORIGINS=https://preprocessor.matika.app
+      # BASE_URL opcional; se omitido, será inferido por request
+      # - BASE_URL=https://preprocessor.matika.app
+    ports:
+      - "8002:8002"
+```
+- Em "Estrutura de Pastas", use a `imagens/` (ignorada no Git):
   - `imagens/<registro>/registro-<n>.jpg`
   - `imagens/misc/<uuid>-<n>.jpg`
 
